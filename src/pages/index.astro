@@ -1,0 +1,1038 @@
+---
+import '../styles/global.css';
+import { getUserFromSession } from '../lib/session';
+
+// Check if user is authenticated
+let user = null;
+let isAuthenticated = false;
+
+try {
+	const sessionToken = Astro.cookies.get('session')?.value;
+	if (sessionToken) {
+		user = await getUserFromSession(sessionToken);
+		isAuthenticated = !!user;
+	}
+} catch (error) {
+	console.error('Authentication check error:', error);
+	isAuthenticated = false;
+}
+
+// Redirect to login if not authenticated
+if (!isAuthenticated) {
+	return Astro.redirect('/login', 302);
+}
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="professional">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Tokyo Tracker - Dashboard</title>
+	</head>
+	<body class="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200">
+		<header class="topbar">
+			<div class="topbar-overlay" id="topbarOverlay"></div>
+			<div class="topbar-content">
+				<div class="topbar-brand">
+					<a href="/" class="topbar-logo">Tokyo Tracker</a>
+				</div>
+				<button class="topbar-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="topbar-icon" id="menuIcon">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+					</svg>
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="topbar-icon" id="closeIcon" style="display: none;">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+				<nav class="topbar-nav" id="topbarNav">
+					<a href="/" class="topbar-nav-link topbar-nav-link--active">Wanderers</a>
+					<a href="/tips" class="topbar-nav-link">General Tips</a>
+					<a href="/cars" class="topbar-nav-link">Mandatory Cars</a>
+				</nav>
+				<div class="topbar-actions">
+					<button id="undoBtn" class="topbar-btn topbar-btn--secondary hidden" title="Undo last action (Ctrl+Z)">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="topbar-icon">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+						</svg>
+						<span class="topbar-btn-text">Undo</span>
+					</button>
+					<div class="topbar-user">
+						<button class="topbar-avatar" id="userMenuBtn" aria-label="User menu">
+							<span class="topbar-avatar-text">{user?.username?.charAt(0).toUpperCase() || 'U'}</span>
+						</button>
+						<div class="topbar-dropdown" id="userMenu" style="display: none;">
+							<a href="/profile" class="topbar-dropdown-item">
+								Profile
+							</a>
+							<a href="/settings" class="topbar-dropdown-item">Settings</a>
+							<a href="/api/logout" class="topbar-dropdown-item topbar-dropdown-item--danger">Logout</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<main class="dashboard">
+			<div class="container">
+				<!-- Page Header -->
+				<div class="page-header">
+					<div>
+						<h1 class="page-title">Rivals Progress</h1>
+						<p class="page-subtitle">Track completion, filter rivals, and review restrictions</p>
+					</div>
+					<div class="flex gap-2">
+						<button class="btn-secondary" id="exportBtn" style="display: none;">Export</button>
+					</div>
+				</div>
+
+				<!-- Section Container -->
+				<div class="section">
+					<!-- Filter Bar -->
+					<div class="filters">
+						<input
+							type="text"
+							id="searchInput"
+							placeholder="Search rivals…"
+							class="control search"
+						/>
+						<select id="levelFilter" class="control">
+							<option value="">All Levels</option>
+							<option value="6-10">Level 6-10</option>
+							<option value="11-15">Level 11-15</option>
+							<option value="16-20">Level 16-20</option>
+							<option value="21-25">Level 21-25</option>
+							<option value="26-30">Level 26-30</option>
+						</select>
+						<select id="statusFilter" class="control">
+							<option value="all">All Status</option>
+							<option value="pending" selected>Pending</option>
+							<option value="completed">Completed</option>
+						</select>
+						<select id="locationFilter" class="control">
+							<option value="">All Locations</option>
+						</select>
+						<button id="clearFiltersBtn" class="btn-clear" style="display: none;">Clear</button>
+					</div>
+
+					<!-- KPI Strip -->
+					<div class="kpi-strip">
+						<div class="kpi">
+							<div class="kpi-label">Completed</div>
+							<div class="kpi-value">
+								<span id="completedCount">0</span> / <span id="totalCount">0</span>
+							</div>
+							<div class="kpi-sub">rivals</div>
+						</div>
+						<div class="kpi">
+							<div class="kpi-label">Completion Rate</div>
+							<div class="kpi-value" id="progressPercent">0%</div>
+							<div class="progress">
+								<span id="progressBar" style="width: 0%;"></span>
+							</div>
+						</div>
+						<div class="kpi">
+							<div class="kpi-label">Last Updated</div>
+							<div class="kpi-value" id="lastUpdateTime" style="font-size: var(--text-md);">Never</div>
+							<div class="kpi-sub">most recent change</div>
+						</div>
+					</div>
+
+					<!-- Table -->
+					<div class="table-wrap">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>
+										<label>
+											<input type="checkbox" id="selectAll" class="checkbox checkbox-primary checkbox-sm" />
+										</label>
+									</th>
+									<th class="cursor-pointer" data-sort="number">
+										Number
+										<span class="sort-indicator text-primary ml-1"></span>
+									</th>
+									<th class="cursor-pointer" data-sort="level">
+										Level
+										<span class="sort-indicator text-primary ml-1"></span>
+									</th>
+									<th class="cursor-pointer" data-sort="name">
+										Name
+										<span class="sort-indicator text-primary ml-1"></span>
+									</th>
+									<th>Unlock Requirements</th>
+									<th>Restrictions</th>
+									<th class="cursor-pointer" data-sort="location">
+										Location
+										<span class="sort-indicator text-primary ml-1"></span>
+									</th>
+									<th>Unlocks</th>
+									<th>Status</th>
+									<th class="cursor-pointer" data-sort="last_updated">
+										Last Updated
+										<span class="sort-indicator text-primary ml-1"></span>
+									</th>
+								</tr>
+							</thead>
+							<tbody id="rivalsTableBody">
+								<tr>
+									<td colspan="10" class="text-center" style="padding: var(--space-8);">
+										<span class="loading loading-spinner loading-lg text-primary"></span>
+										<p style="margin-top: var(--space-4); color: var(--text-3);">Loading rivals...</p>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</main>
+
+		<script>
+			// Type definitions
+			interface Rival {
+				id: number;
+				number: string;
+				level: number;
+				name: string;
+				unlock_requirements: string | null;
+				restrictions: string | null;
+				location: string;
+				unlocks: string | null;
+				user_completed: boolean;
+				last_updated: string | null;
+			}
+
+			// Undo system
+			interface UndoAction {
+				rivalId: number;
+				previousState: boolean;
+				timestamp: number;
+			}
+
+			let undoStack: UndoAction[] = [];
+			const MAX_UNDO_HISTORY = 10;
+
+			let allRivals: Rival[] = [];
+			let filteredRivals: Rival[] = [];
+			let sortColumn: string = 'number';
+			let sortDirection: 'asc' | 'desc' = 'asc';
+
+			// URL parameter management
+			function getUrlParams() {
+				const params = new URLSearchParams(window.location.search);
+				return {
+					search: params.get('search') || '',
+					level: params.get('level') || '',
+					status: params.get('status') || 'pending', // Default to pending for URL, but 'all' for filter
+					location: params.get('location') || '',
+					sort: params.get('sort') || 'number',
+					direction: (params.get('direction') || 'asc') as 'asc' | 'desc',
+				};
+			}
+
+			function updateUrl() {
+				const params = new URLSearchParams();
+				
+				const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+				const levelFilter = document.getElementById('levelFilter') as HTMLSelectElement | null;
+				const statusFilter = document.getElementById('statusFilter') as HTMLSelectElement | null;
+				const locationFilter = document.getElementById('locationFilter') as HTMLSelectElement | null;
+
+				if (searchInput?.value) params.set('search', searchInput.value);
+				if (levelFilter?.value) params.set('level', levelFilter.value);
+				// Always include status in URL for clarity, even if it's the default
+				if (statusFilter?.value) params.set('status', statusFilter.value);
+				if (locationFilter?.value) params.set('location', locationFilter.value);
+				// Always include sort in URL for clarity
+				if (sortColumn) params.set('sort', sortColumn);
+				if (sortDirection) params.set('direction', sortDirection);
+
+				// Update URL without page reload
+				const newUrl = params.toString() 
+					? `${window.location.pathname}?${params.toString()}`
+					: window.location.pathname;
+				window.history.pushState({}, '', newUrl);
+			}
+
+			function loadFromUrl() {
+				const urlParams = getUrlParams();
+				
+				// Set filters from URL
+				const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+				const levelFilter = document.getElementById('levelFilter') as HTMLSelectElement | null;
+				const statusFilter = document.getElementById('statusFilter') as HTMLSelectElement | null;
+				const locationFilter = document.getElementById('locationFilter') as HTMLSelectElement | null;
+
+				if (searchInput) searchInput.value = urlParams.search;
+				if (levelFilter) levelFilter.value = urlParams.level;
+				if (statusFilter) statusFilter.value = urlParams.status || 'all'; // Default to 'all' if not in URL
+				if (locationFilter) locationFilter.value = urlParams.location;
+
+				// Set sort from URL
+				sortColumn = urlParams.sort;
+				sortDirection = urlParams.direction;
+
+				// Update sort indicators
+				document.querySelectorAll<HTMLElement>('[data-sort]').forEach((el) => {
+					const indicator = el.querySelector('.sort-indicator');
+					if (indicator) indicator.textContent = '';
+				});
+				const sortTh = document.querySelector<HTMLElement>(`[data-sort="${sortColumn}"]`);
+				if (sortTh) {
+					const indicator = sortTh.querySelector('.sort-indicator');
+					if (indicator) {
+						indicator.textContent = sortDirection === 'asc' ? ' ↑' : ' ↓';
+					}
+				}
+			}
+
+			// Load rivals
+			async function loadRivals() {
+				try {
+					const response = await fetch('/api/rivals/progress');
+					const data = await response.json() as { rivals?: Rival[] };
+					if (data.rivals) {
+						allRivals = data.rivals;
+						populateLocationFilter();
+						loadFromUrl(); // Load filters/sort from URL
+						applyFilters(); // Apply filters
+						updateStats();
+					}
+				} catch (error) {
+					console.error('Error loading rivals:', error);
+					const tbody = document.getElementById('rivalsTableBody');
+					if (tbody) {
+						tbody.innerHTML = `
+							<tr>
+								<td colspan="10" class="text-center py-12 border-b border-base-300/30">
+									<div class="flex flex-col items-center gap-2">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-error">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+										</svg>
+										<p class="text-error font-medium">Error loading rivals. Please refresh the page.</p>
+									</div>
+								</td>
+							</tr>
+						`;
+					}
+				}
+			}
+
+			// Get level tier for color coding (1-30)
+			function getLevelTier(level: number): string {
+				if (level <= 6) return 'tier-1';      // 1-6: Gray/Low
+				if (level <= 12) return 'tier-2';     // 7-12: Blue
+				if (level <= 18) return 'tier-3';     // 13-18: Green
+				if (level <= 24) return 'tier-4';     // 19-24: Yellow/Orange
+				return 'tier-5';                       // 25-30: Red/Purple/Max
+			}
+
+			// Update table
+			function updateTable() {
+				const tbody = document.getElementById('rivalsTableBody');
+				if (!tbody) return;
+
+				if (filteredRivals.length === 0) {
+					tbody.innerHTML = `
+						<tr>
+							<td colspan="10" class="text-center py-12 border-b border-base-300/30">
+								<div class="flex flex-col items-center gap-2">
+									<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-base-content/30">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+									</svg>
+									<p class="text-base-content/60 font-medium">No rivals found matching your filters.</p>
+								</div>
+							</td>
+						</tr>
+					`;
+					return;
+				}
+
+				tbody.innerHTML = filteredRivals.map((rival, index) => {
+					const lastUpdated = rival.last_updated 
+						? new Date(rival.last_updated).toLocaleString('en-US', { 
+							month: 'short', 
+							day: 'numeric', 
+							hour: '2-digit', 
+							minute: '2-digit' 
+						})
+						: '<span class="text-base-content/40">Never</span>';
+					
+					// Escape HTML to prevent < > from being interpreted as tags
+					const escapeHtml = (text: string | null): string => {
+						if (!text) return '';
+						return text
+							.replace(/&/g, '&amp;')
+							.replace(/</g, '&lt;')
+							.replace(/>/g, '&gt;')
+							.replace(/"/g, '&quot;')
+							.replace(/'/g, '&#039;');
+					};
+					
+					// Format unlocks as plain text (truncated to prevent vertical space)
+					const formatUnlocks = (text: string | null) => {
+						if (!text) return '<span style="color: var(--text-3);">None</span>';
+						// Split by comma and join with commas
+						const unlocks = text.split(',').map(u => u.trim()).filter(u => u);
+						if (unlocks.length === 0) return '<span style="color: var(--text-3);">None</span>';
+						
+						const fullText = unlocks.join(', ');
+						const maxLength = 50;
+						const truncated = fullText.length > maxLength ? fullText.substring(0, maxLength) + '…' : fullText;
+						
+						return `<span class="cell-muted" style="font-size: var(--text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 200px;" title="${escapeHtml(fullText)}">${escapeHtml(truncated)}</span>`;
+					};
+					
+					// Status chip
+					const statusChip = rival.user_completed 
+						? '<span class="pill pill--done">Completed</span>'
+						: '<span class="pill pill--pend">Pending</span>';
+					
+					return `
+					<tr style="animation-delay: ${index * 0.03}s">
+						<td>
+							<label class="cursor-pointer">
+								<input 
+									type="checkbox" 
+									class="checkbox checkbox-primary checkbox-sm rival-checkbox transition-all duration-150" 
+									data-rival-id="${rival.id}"
+									${rival.user_completed ? 'checked' : ''}
+								/>
+							</label>
+						</td>
+						<td class="cell-muted font-mono" style="font-size: var(--text-xs);">${rival.number}</td>
+						<td>
+							<span class="pill pill--level pill--level-${getLevelTier(rival.level)}">Lv ${rival.level}</span>
+						</td>
+						<td class="cell-strong" style="font-size: var(--text-md);">${rival.name}</td>
+						<td class="cell-muted" style="font-size: var(--text-xs);">${rival.unlock_requirements ? escapeHtml(rival.unlock_requirements) : '<span style="color: var(--text-3);">None</span>'}</td>
+						<td class="cell-muted" style="font-size: var(--text-xs);">${rival.restrictions ? escapeHtml(rival.restrictions) : '<span style="color: var(--text-3);">None</span>'}</td>
+						<td class="cell-muted" style="font-size: var(--text-sm);">${rival.location}</td>
+						<td>${formatUnlocks(rival.unlocks)}</td>
+						<td>${statusChip}</td>
+						<td class="cell-muted" style="font-size: var(--text-xs);">${lastUpdated}</td>
+					</tr>
+				`;
+				}).join('');
+
+				// Add event listeners to checkboxes
+				document.querySelectorAll<HTMLInputElement>('.rival-checkbox').forEach((checkbox) => {
+					checkbox.addEventListener('change', handleCheckboxChange);
+				});
+			}
+
+			// Animate number counter
+			function animateValue(element: HTMLElement, start: number, end: number, duration: number, suffix: string = '') {
+				const range = end - start;
+				const increment = end > start ? 1 : -1;
+				const stepTime = Math.abs(Math.floor(duration / range));
+				let current = start;
+				
+				const timer = setInterval(() => {
+					current += increment;
+					element.textContent = String(current) + suffix;
+					if (current === end) {
+						clearInterval(timer);
+					}
+				}, stepTime);
+			}
+
+			// Format time ago
+			function formatTimeAgo(dateString: string | null): string {
+				if (!dateString) return 'Never';
+				
+				const date = new Date(dateString);
+				const now = new Date();
+				const diffMs = now.getTime() - date.getTime();
+				const diffMins = Math.floor(diffMs / 60000);
+				const diffHours = Math.floor(diffMs / 3600000);
+				const diffDays = Math.floor(diffMs / 86400000);
+				
+				if (diffMins < 1) return 'Just now';
+				if (diffMins < 60) return `${diffMins}m ago`;
+				if (diffHours < 24) return `${diffHours}h ago`;
+				if (diffDays < 7) return `${diffDays}d ago`;
+				
+				const diffWeeks = Math.floor(diffDays / 7);
+				if (diffWeeks < 4) return `${diffWeeks}w ago`;
+				
+				const diffMonths = Math.floor(diffDays / 30);
+				return `${diffMonths}mo ago`;
+			}
+
+			// Check if filters are active and show/hide Clear button
+			function updateClearButton(): void {
+				const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+				const levelFilter = document.getElementById('levelFilter') as HTMLSelectElement | null;
+				const statusFilter = document.getElementById('statusFilter') as HTMLSelectElement | null;
+				const locationFilter = document.getElementById('locationFilter') as HTMLSelectElement | null;
+				const clearBtn = document.getElementById('clearFiltersBtn');
+
+				if (!clearBtn) return;
+
+				const hasFilters = 
+					(searchInput?.value || '') !== '' ||
+					(levelFilter?.value || '') !== '' ||
+					(statusFilter?.value || '') !== 'all' ||
+					(locationFilter?.value || '') !== '';
+
+				clearBtn.style.display = hasFilters ? 'block' : 'none';
+			}
+
+			// Clear all filters
+			function clearFilters(): void {
+				const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+				const levelFilter = document.getElementById('levelFilter') as HTMLSelectElement | null;
+				const statusFilter = document.getElementById('statusFilter') as HTMLSelectElement | null;
+				const locationFilter = document.getElementById('locationFilter') as HTMLSelectElement | null;
+
+				if (searchInput) searchInput.value = '';
+				if (levelFilter) levelFilter.value = '';
+				if (statusFilter) statusFilter.value = 'all';
+				if (locationFilter) locationFilter.value = '';
+
+				applyFilters();
+				updateClearButton();
+			}
+
+			// Update stats
+			function updateStats() {
+				const completed = allRivals.filter((r) => r.user_completed).length;
+				const total = allRivals.length;
+				const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+				const completedEl = document.getElementById('completedCount');
+				const totalEl = document.getElementById('totalCount');
+				const percentEl = document.getElementById('progressPercent');
+				const progressBar = document.getElementById('progressBar');
+				const lastUpdateEl = document.getElementById('lastUpdateTime');
+
+				if (completedEl) {
+					const currentValue = parseInt(completedEl.textContent || '0', 10);
+					if (currentValue !== completed) {
+						animateValue(completedEl, currentValue, completed, 500);
+					} else {
+						completedEl.textContent = String(completed);
+					}
+				}
+				if (totalEl) totalEl.textContent = String(total);
+				if (percentEl) {
+					const currentPercent = parseInt(percentEl.textContent?.replace('%', '') || '0', 10);
+					if (currentPercent !== percent) {
+						animateValue(percentEl, currentPercent, percent, 500, '%');
+					} else {
+						percentEl.textContent = `${percent}%`;
+					}
+				}
+				if (progressBar) {
+					progressBar.style.width = `${percent}%`;
+				}
+
+				// Update last update time
+				if (lastUpdateEl) {
+					const lastUpdated = allRivals
+						.filter(r => r.last_updated)
+						.map(r => new Date(r.last_updated!).getTime())
+						.sort((a, b) => b - a)[0];
+					
+					if (lastUpdated) {
+						lastUpdateEl.textContent = formatTimeAgo(new Date(lastUpdated).toISOString());
+					} else {
+						lastUpdateEl.textContent = 'Never';
+					}
+				}
+			}
+
+			// Populate location filter
+			function populateLocationFilter() {
+				const locations = [...new Set(allRivals.map((r) => r.location))].sort();
+				const select = document.getElementById('locationFilter') as HTMLSelectElement | null;
+				if (!select) return;
+
+				locations.forEach((location) => {
+					const option = document.createElement('option');
+					option.value = location;
+					option.textContent = location;
+					select.appendChild(option);
+				});
+			}
+
+			// Toast notification system
+			function showToast(message: string, type: 'success' | 'error' | 'info' = 'info', action?: { label: string; onClick: () => void }) {
+				// Remove existing toast
+				const existingToast = document.getElementById('toast');
+				if (existingToast) existingToast.remove();
+
+				const toast = document.createElement('div');
+				toast.id = 'toast';
+				toast.className = `toast toast-top toast-end z-50`;
+				toast.innerHTML = `
+					<div class="alert ${type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info'} shadow-lg animate-slide-down">
+						<div class="flex items-center gap-2">
+							<span>${message}</span>
+							${action ? `<button class="btn btn-sm btn-ghost" onclick="this.closest('.toast').remove()">${action.label}</button>` : ''}
+							<button class="btn btn-sm btn-ghost" onclick="this.closest('.toast').remove()">✕</button>
+						</div>
+					</div>
+				`;
+				document.body.appendChild(toast);
+
+				// Attach action handler if provided
+				if (action) {
+					const actionBtn = toast.querySelector('button.btn-ghost');
+					if (actionBtn && actionBtn.textContent === action.label) {
+						actionBtn.addEventListener('click', action.onClick);
+					}
+				}
+
+				// Auto remove after 5 seconds
+				setTimeout(() => {
+					if (toast.parentNode) {
+						toast.remove();
+					}
+				}, 5000);
+			}
+
+			// Undo last action
+			async function undoLastAction() {
+				if (undoStack.length === 0) {
+					showToast('No actions to undo', 'info');
+					return;
+				}
+
+				const lastAction = undoStack.pop()!;
+				updateUndoButton();
+				const checkbox = document.querySelector<HTMLInputElement>(`.rival-checkbox[data-rival-id="${lastAction.rivalId}"]`);
+				const rival = allRivals.find((r) => r.id === lastAction.rivalId);
+				
+				if (checkbox && rival) {
+					// Revert the state without triggering another undo action
+					const previousState = rival.user_completed;
+					rival.user_completed = lastAction.previousState;
+					checkbox.checked = lastAction.previousState;
+					
+					// Update stats and filters
+					updateStats();
+					applyFilters();
+					
+					// Sync with server
+					checkbox.disabled = true;
+					try {
+						const response = await fetch('/api/rivals/progress', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ rivalId: lastAction.rivalId, completed: lastAction.previousState }),
+						});
+
+						if (response.ok) {
+							const data = await response.json() as { updated_at?: string };
+							if (data.updated_at) {
+								rival.last_updated = data.updated_at;
+							}
+							const actionText = lastAction.previousState ? 'completed' : 'pending';
+							showToast(`${rival.name} marked as ${actionText}`, 'success');
+						} else {
+							// Revert on error
+							rival.user_completed = previousState;
+							checkbox.checked = previousState;
+							updateStats();
+							applyFilters();
+							showToast('Failed to undo. Please try again.', 'error');
+						}
+					} catch (error) {
+						// Revert on error
+						rival.user_completed = previousState;
+						checkbox.checked = previousState;
+						updateStats();
+						applyFilters();
+						showToast('Error undoing action. Please try again.', 'error');
+					} finally {
+						checkbox.disabled = false;
+					}
+				}
+			}
+
+			// Handle checkbox change with optimistic updates
+			async function handleCheckboxChange(eventOrElement: Event | HTMLInputElement): Promise<void> {
+				let checkbox: HTMLInputElement | null = null;
+				
+				if (eventOrElement instanceof Event) {
+					checkbox = eventOrElement.target as HTMLInputElement | null;
+				} else {
+					checkbox = eventOrElement;
+				}
+				
+				if (!checkbox) return;
+				const rivalId = parseInt(checkbox.dataset.rivalId || '0', 10);
+				const completed = checkbox.checked;
+
+				// Find rival and store previous state for undo
+				const rival = allRivals.find((r) => r.id === rivalId);
+				if (!rival) return;
+
+				const previousState = rival.user_completed;
+				
+				// Optimistic update - update UI immediately
+				rival.user_completed = completed;
+				rival.last_updated = new Date().toISOString();
+				
+				// Update stats immediately
+				updateStats();
+				
+				// Re-apply filters to update table with new state
+				applyFilters();
+
+				// Store undo action
+				undoStack.push({
+					rivalId,
+					previousState,
+					timestamp: Date.now(),
+				});
+
+				// Keep only last N actions
+				if (undoStack.length > MAX_UNDO_HISTORY) {
+					undoStack.shift();
+				}
+
+				// Update undo button visibility
+				updateUndoButton();
+
+				// Disable checkbox during request
+				checkbox.disabled = true;
+
+				try {
+					const response = await fetch('/api/rivals/progress', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ rivalId, completed }),
+					});
+
+					if (response.ok) {
+						const data = await response.json() as { updated_at?: string };
+						// Update with server timestamp
+						if (data.updated_at) {
+							rival.last_updated = data.updated_at;
+						}
+						
+						// Show success toast with undo option
+						const rivalName = rival.name;
+						showToast(
+							`${rivalName} marked as ${completed ? 'completed' : 'pending'}`,
+							'success',
+							{
+								label: 'Undo',
+								onClick: () => {
+									// Revert the action
+									rival.user_completed = previousState;
+									checkbox.checked = previousState;
+									updateStats();
+									applyFilters();
+									
+									// Remove from undo stack since we're manually reverting
+									undoStack = undoStack.filter(a => a.rivalId !== rivalId || a.timestamp !== undoStack[undoStack.length - 1]?.timestamp);
+									
+									// Make API call to sync
+									fetch('/api/rivals/progress', {
+										method: 'POST',
+										headers: { 'Content-Type': 'application/json' },
+										body: JSON.stringify({ rivalId, completed: previousState }),
+									}).catch(() => {
+										// If sync fails, revert optimistic update
+										rival.user_completed = completed;
+										checkbox.checked = completed;
+										updateStats();
+										applyFilters();
+										showToast('Failed to sync undo. Please refresh.', 'error');
+									});
+								}
+							}
+						);
+					} else {
+						// Revert optimistic update on error
+						rival.user_completed = previousState;
+						rival.last_updated = null;
+						checkbox.checked = previousState;
+						updateStats();
+						applyFilters();
+						
+					// Remove from undo stack
+					undoStack = undoStack.filter(a => a.rivalId !== rivalId || a.timestamp !== undoStack[undoStack.length - 1]?.timestamp);
+					updateUndoButton();
+					
+					showToast('Failed to update progress. Please try again.', 'error');
+					}
+				} catch (error) {
+					// Revert optimistic update on error
+					rival.user_completed = previousState;
+					rival.last_updated = null;
+					checkbox.checked = previousState;
+					updateStats();
+					applyFilters();
+					
+					// Remove from undo stack
+					undoStack = undoStack.filter(a => a.rivalId !== rivalId || a.timestamp !== undoStack[undoStack.length - 1]?.timestamp);
+					updateUndoButton();
+					
+					showToast('Error updating progress. Please try again.', 'error');
+				} finally {
+					checkbox.disabled = false;
+				}
+			}
+
+			// Apply filters
+			function applyFilters() {
+				const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
+				const levelFilterEl = document.getElementById('levelFilter') as HTMLSelectElement | null;
+				const statusFilterEl = document.getElementById('statusFilter') as HTMLSelectElement | null;
+				const locationFilterEl = document.getElementById('locationFilter') as HTMLSelectElement | null;
+
+				const searchTerm = searchInput?.value.toLowerCase() || '';
+				const levelFilter = levelFilterEl?.value || '';
+				const statusFilter = statusFilterEl?.value || '';
+				const locationFilter = locationFilterEl?.value || '';
+
+				filteredRivals = allRivals.filter((rival) => {
+					// Search filter
+					if (searchTerm) {
+						const searchable = `${rival.name} ${rival.number} ${rival.location} ${rival.unlock_requirements || ''} ${rival.restrictions || ''}`.toLowerCase();
+						if (!searchable.includes(searchTerm)) return false;
+					}
+
+					// Level filter
+					if (levelFilter) {
+						const [min, max] = levelFilter.split('-').map(Number);
+						if (rival.level < min || rival.level > max) return false;
+					}
+
+					// Status filter - 'all' or empty shows all, otherwise filter
+					if (statusFilter === 'completed' && !rival.user_completed) return false;
+					if (statusFilter === 'pending' && rival.user_completed) return false;
+					// If statusFilter is 'all' or empty, show all (no filtering)
+
+					// Location filter
+					if (locationFilter && rival.location !== locationFilter) return false;
+
+					return true;
+				});
+
+				applySort();
+				updateTable();
+				updateUrl(); // Update URL with current filters
+				updateClearButton(); // Update Clear button visibility
+			}
+
+			// Apply sorting
+			function applySort() {
+				filteredRivals.sort((a, b) => {
+					let aVal, bVal;
+
+					switch (sortColumn) {
+						case 'number':
+							aVal = a.number;
+							bVal = b.number;
+							break;
+						case 'level':
+							aVal = a.level;
+							bVal = b.level;
+							break;
+						case 'name':
+							aVal = a.name.toLowerCase();
+							bVal = b.name.toLowerCase();
+							break;
+						case 'location':
+							aVal = a.location.toLowerCase();
+							bVal = b.location.toLowerCase();
+							break;
+						case 'last_updated':
+							aVal = a.last_updated ? new Date(a.last_updated).getTime() : 0;
+							bVal = b.last_updated ? new Date(b.last_updated).getTime() : 0;
+							break;
+						default:
+							return 0;
+					}
+
+					if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+					if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+					return 0;
+				});
+			}
+
+			// Sort handler
+			document.querySelectorAll<HTMLElement>('[data-sort]').forEach((th) => {
+				th.addEventListener('click', () => {
+					const column = th.dataset.sort || '';
+					if (sortColumn === column) {
+						sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+					} else {
+						sortColumn = column;
+						sortDirection = 'asc';
+					}
+
+					// Update sort indicators
+					document.querySelectorAll<HTMLElement>('[data-sort]').forEach((el) => {
+						const indicator = el.querySelector('.sort-indicator');
+						if (indicator) indicator.textContent = '';
+					});
+					const indicator = th.querySelector('.sort-indicator');
+					if (indicator) {
+						indicator.textContent = sortDirection === 'asc' ? ' ↑' : ' ↓';
+					}
+
+					applySort();
+					updateTable();
+					updateUrl(); // Update URL with sort
+				});
+			});
+
+			// Event listeners
+			const searchInput = document.getElementById('searchInput');
+			const levelFilter = document.getElementById('levelFilter');
+			const statusFilter = document.getElementById('statusFilter');
+			const locationFilter = document.getElementById('locationFilter');
+			const selectAll = document.getElementById('selectAll');
+
+			// Debounce search input to avoid too many URL updates
+			let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+			if (searchInput) {
+				searchInput.addEventListener('input', () => {
+					if (searchTimeout) clearTimeout(searchTimeout);
+					searchTimeout = setTimeout(() => {
+						applyFilters();
+					}, 300); // Wait 300ms after user stops typing
+				});
+			}
+
+			if (levelFilter) levelFilter.addEventListener('change', applyFilters);
+			if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+			if (locationFilter) locationFilter.addEventListener('change', applyFilters);
+
+			// Clear filters button
+			const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+			if (clearFiltersBtn) {
+				clearFiltersBtn.addEventListener('click', clearFilters);
+			}
+
+			// Handle browser back/forward buttons
+			window.addEventListener('popstate', () => {
+				loadFromUrl();
+				applyFilters();
+			});
+
+			// Select all handler
+			if (selectAll) {
+				selectAll.addEventListener('change', (e: Event) => {
+					const target = e.target as HTMLInputElement | null;
+					if (!target) return;
+
+					const checked = target.checked;
+					document.querySelectorAll<HTMLInputElement>('.rival-checkbox').forEach((cb) => {
+						if (!cb.disabled) {
+							cb.checked = checked;
+							handleCheckboxChange(cb);
+						}
+					});
+				});
+			}
+
+			// Update undo button visibility
+			function updateUndoButton() {
+				const undoBtn = document.getElementById('undoBtn');
+				if (undoBtn) {
+					if (undoStack.length > 0) {
+						undoBtn.classList.remove('hidden');
+					} else {
+						undoBtn.classList.add('hidden');
+					}
+				}
+			}
+
+			// Undo button handler
+			const undoBtn = document.getElementById('undoBtn');
+			if (undoBtn) {
+				undoBtn.addEventListener('click', () => {
+					undoLastAction();
+					updateUndoButton();
+				});
+			}
+
+			// Mobile menu toggle
+			const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+			const topbarNav = document.getElementById('topbarNav');
+			const topbarOverlay = document.getElementById('topbarOverlay');
+			const menuIcon = document.getElementById('menuIcon');
+			const closeIcon = document.getElementById('closeIcon');
+			
+			if (mobileMenuToggle && topbarNav && topbarOverlay) {
+				mobileMenuToggle.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const isOpen = topbarNav.classList.contains('mobile-open');
+					
+					if (isOpen) {
+						topbarNav.classList.remove('mobile-open');
+						topbarOverlay.classList.remove('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'block';
+						if (closeIcon) closeIcon.style.display = 'none';
+					} else {
+						topbarNav.classList.add('mobile-open');
+						topbarOverlay.classList.add('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'none';
+						if (closeIcon) closeIcon.style.display = 'block';
+					}
+				});
+				
+				// Close menu when clicking overlay
+				topbarOverlay.addEventListener('click', () => {
+					topbarNav.classList.remove('mobile-open');
+					topbarOverlay.classList.remove('mobile-open');
+					if (menuIcon) menuIcon.style.display = 'block';
+					if (closeIcon) closeIcon.style.display = 'none';
+				});
+				
+				// Close menu when clicking a nav link
+				topbarNav.querySelectorAll('.topbar-nav-link').forEach((link) => {
+					link.addEventListener('click', () => {
+						topbarNav.classList.remove('mobile-open');
+						topbarOverlay.classList.remove('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'block';
+						if (closeIcon) closeIcon.style.display = 'none';
+					});
+				});
+			}
+
+			// User menu toggle
+			const userMenuBtn = document.getElementById('userMenuBtn');
+			const userMenu = document.getElementById('userMenu');
+			if (userMenuBtn && userMenu) {
+				userMenuBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const isVisible = userMenu.style.display !== 'none';
+					userMenu.style.display = isVisible ? 'none' : 'block';
+				});
+
+				// Close menu when clicking outside
+				document.addEventListener('click', (e) => {
+					if (userMenu && !userMenu.contains(e.target as Node) && !userMenuBtn?.contains(e.target as Node)) {
+						userMenu.style.display = 'none';
+					}
+				});
+			}
+
+			// Keyboard shortcut for undo (Ctrl+Z or Cmd+Z)
+			document.addEventListener('keydown', (e) => {
+				if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && !e.altKey) {
+					e.preventDefault();
+					if (undoStack.length > 0) {
+						undoLastAction();
+					}
+				}
+			});
+
+			// Initial load
+			loadRivals();
+		</script>
+	</body>
+</html>

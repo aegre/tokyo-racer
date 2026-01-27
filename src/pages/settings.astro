@@ -1,0 +1,389 @@
+---
+import '../styles/global.css';
+import { getUserFromSession } from '../lib/session';
+
+// Check if user is authenticated
+let user = null;
+let isAuthenticated = false;
+
+try {
+	const sessionToken = Astro.cookies.get('session')?.value;
+	if (sessionToken) {
+		user = await getUserFromSession(sessionToken);
+		isAuthenticated = !!user;
+	}
+} catch (error) {
+	console.error('Authentication check error:', error);
+	isAuthenticated = false;
+}
+
+// Redirect to login if not authenticated
+if (!isAuthenticated) {
+	return Astro.redirect('/login', 302);
+}
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="professional">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Tokyo Tracker - Settings</title>
+	</head>
+	<body class="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200">
+		<header class="topbar">
+			<div class="topbar-overlay" id="topbarOverlay"></div>
+			<div class="topbar-content">
+				<div class="topbar-brand">
+					<a href="/" class="topbar-logo">Tokyo Tracker</a>
+				</div>
+				<button class="topbar-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="topbar-icon" id="menuIcon">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+					</svg>
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="topbar-icon" id="closeIcon" style="display: none;">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+				<nav class="topbar-nav" id="topbarNav">
+					<a href="/" class="topbar-nav-link">Wanderers</a>
+					<a href="/tips" class="topbar-nav-link">General Tips</a>
+					<a href="/cars" class="topbar-nav-link">Mandatory Cars</a>
+				</nav>
+				<div class="topbar-actions">
+					<div class="topbar-user">
+						<button class="topbar-avatar" id="userMenuBtn" aria-label="User menu">
+							<span class="topbar-avatar-text">{user?.username?.charAt(0).toUpperCase() || 'U'}</span>
+						</button>
+						<div class="topbar-dropdown" id="userMenu" style="display: none;">
+							<a href="/profile" class="topbar-dropdown-item">
+								Profile
+							</a>
+							<a href="/settings" class="topbar-dropdown-item topbar-dropdown-item--active">
+								Settings
+							</a>
+							<a href="/api/logout" class="topbar-dropdown-item topbar-dropdown-item--danger">Logout</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<main class="dashboard">
+			<div class="container">
+				<!-- Page Header -->
+				<div class="page-header">
+					<div>
+						<h1 class="page-title">Settings</h1>
+						<p class="page-subtitle">Manage your account settings and preferences</p>
+					</div>
+				</div>
+
+				<!-- Account Settings -->
+				<div class="stats-card">
+					<div class="stats-card-header">
+						<h3 class="stats-card-title">Account Settings</h3>
+					</div>
+					<div class="stats-card-content">
+						<div class="settings-section">
+							<div class="settings-field">
+								<label class="settings-label">Username</label>
+								<div class="settings-value">{user?.username || 'N/A'}</div>
+								<p class="settings-hint">Username cannot be changed</p>
+							</div>
+							<div class="settings-field">
+								<label class="settings-label">Email</label>
+								<div class="settings-value">{user?.email || 'N/A'}</div>
+								<p class="settings-hint">Email cannot be changed</p>
+							</div>
+							<div class="settings-field">
+								<label class="settings-label">Email Verification</label>
+								<div class="settings-value">
+									<span class="profile-badge" id="emailVerifiedBadge">
+										{user?.email_verified ? '✓ Verified' : '⚠ Unverified'}
+									</span>
+								</div>
+								<p class="settings-hint">Verification status</p>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Security -->
+				<div class="stats-card">
+					<div class="stats-card-header">
+						<h3 class="stats-card-title">Security</h3>
+					</div>
+					<div class="stats-card-content">
+						<form id="changePasswordForm" class="settings-form">
+							<div class="settings-field">
+								<label for="currentPassword" class="settings-label">Current Password</label>
+								<input
+									type="password"
+									id="currentPassword"
+									name="currentPassword"
+									class="control"
+									required
+									autocomplete="current-password"
+								/>
+								<p class="settings-error" id="currentPasswordError"></p>
+							</div>
+							<div class="settings-field">
+								<label for="newPassword" class="settings-label">New Password</label>
+								<input
+									type="password"
+									id="newPassword"
+									name="newPassword"
+									class="control"
+									required
+									minlength="8"
+									autocomplete="new-password"
+								/>
+								<p class="settings-hint">Must be at least 8 characters long</p>
+								<p class="settings-error" id="newPasswordError"></p>
+							</div>
+							<div class="settings-field">
+								<label for="confirmPassword" class="settings-label">Confirm New Password</label>
+								<input
+									type="password"
+									id="confirmPassword"
+									name="confirmPassword"
+									class="control"
+									required
+									autocomplete="new-password"
+								/>
+								<p class="settings-error" id="confirmPasswordError"></p>
+							</div>
+							<div class="settings-actions">
+								<button type="submit" class="btn btn-primary" id="changePasswordBtn">
+									Change Password
+								</button>
+							</div>
+							<div class="settings-message" id="passwordMessage"></div>
+						</form>
+					</div>
+				</div>
+
+				<!-- Data Management -->
+				<div class="stats-card">
+					<div class="stats-card-header">
+						<h3 class="stats-card-title">Data Management</h3>
+					</div>
+					<div class="stats-card-content">
+						<div class="settings-section">
+							<div class="settings-field">
+								<label class="settings-label">Export Your Data</label>
+								<p class="settings-description">Download your progress data in JSON or CSV format.</p>
+								<div class="settings-actions">
+									<a href="/api/profile/export?format=json" class="btn btn-secondary">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 1rem; height: 1rem; margin-right: var(--space-2);">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+										</svg>
+										Export JSON
+									</a>
+									<a href="/api/profile/export?format=csv" class="btn btn-secondary">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 1rem; height: 1rem; margin-right: var(--space-2);">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+										</svg>
+										Export CSV
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- About -->
+				<div class="stats-card">
+					<div class="stats-card-header">
+						<h3 class="stats-card-title">About</h3>
+					</div>
+					<div class="stats-card-content">
+						<div class="settings-section">
+							<div class="settings-field">
+								<label class="settings-label">App Version</label>
+								<div class="settings-value">1.0.0</div>
+							</div>
+							<div class="settings-field">
+								<label class="settings-label">Account Created</label>
+								<div class="settings-value" id="accountCreated">
+									{user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</main>
+
+		<script>
+			// Mobile menu toggle
+			const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+			const topbarNav = document.getElementById('topbarNav');
+			const topbarOverlay = document.getElementById('topbarOverlay');
+			const menuIcon = document.getElementById('menuIcon');
+			const closeIcon = document.getElementById('closeIcon');
+			
+			if (mobileMenuToggle && topbarNav && topbarOverlay) {
+				mobileMenuToggle.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const isOpen = topbarNav.classList.contains('mobile-open');
+					
+					if (isOpen) {
+						topbarNav.classList.remove('mobile-open');
+						topbarOverlay.classList.remove('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'block';
+						if (closeIcon) closeIcon.style.display = 'none';
+					} else {
+						topbarNav.classList.add('mobile-open');
+						topbarOverlay.classList.add('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'none';
+						if (closeIcon) closeIcon.style.display = 'block';
+					}
+				});
+				
+				topbarOverlay.addEventListener('click', () => {
+					topbarNav.classList.remove('mobile-open');
+					topbarOverlay.classList.remove('mobile-open');
+					if (menuIcon) menuIcon.style.display = 'block';
+					if (closeIcon) closeIcon.style.display = 'none';
+				});
+				
+				topbarNav.querySelectorAll('.topbar-nav-link').forEach((link) => {
+					link.addEventListener('click', () => {
+						topbarNav.classList.remove('mobile-open');
+						topbarOverlay.classList.remove('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'block';
+						if (closeIcon) closeIcon.style.display = 'none';
+					});
+				});
+			}
+
+			// User menu toggle
+			const userMenuBtn = document.getElementById('userMenuBtn');
+			const userMenu = document.getElementById('userMenu');
+			if (userMenuBtn && userMenu) {
+				userMenuBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const isVisible = userMenu.style.display !== 'none';
+					userMenu.style.display = isVisible ? 'none' : 'block';
+				});
+
+				document.addEventListener('click', (e) => {
+					if (userMenu && !userMenu.contains(e.target as Node) && !userMenuBtn?.contains(e.target as Node)) {
+						userMenu.style.display = 'none';
+					}
+				});
+			}
+
+			// Password change form
+			const changePasswordForm = document.getElementById('changePasswordForm') as HTMLFormElement;
+			const changePasswordBtn = document.getElementById('changePasswordBtn') as HTMLButtonElement;
+			const passwordMessage = document.getElementById('passwordMessage') as HTMLDivElement;
+
+			function clearErrors() {
+				['currentPasswordError', 'newPasswordError', 'confirmPasswordError'].forEach(id => {
+					const el = document.getElementById(id);
+					if (el) el.textContent = '';
+				});
+				if (passwordMessage) {
+					passwordMessage.textContent = '';
+					passwordMessage.className = 'settings-message';
+				}
+			}
+
+			function showError(fieldId: string, message: string) {
+				const errorEl = document.getElementById(fieldId);
+				if (errorEl) {
+					errorEl.textContent = message;
+				}
+			}
+
+			function showMessage(message: string, type: 'success' | 'error') {
+				if (passwordMessage) {
+					passwordMessage.textContent = message;
+					passwordMessage.className = `settings-message settings-message--${type}`;
+				}
+			}
+
+			if (changePasswordForm && changePasswordBtn) {
+				changePasswordForm.addEventListener('submit', async (e) => {
+					e.preventDefault();
+					clearErrors();
+
+					const currentPassword = (document.getElementById('currentPassword') as HTMLInputElement).value;
+					const newPassword = (document.getElementById('newPassword') as HTMLInputElement).value;
+					const confirmPassword = (document.getElementById('confirmPassword') as HTMLInputElement).value;
+
+					// Validation
+					if (!currentPassword) {
+						showError('currentPasswordError', 'Current password is required');
+						return;
+					}
+
+					if (!newPassword || newPassword.length < 8) {
+						showError('newPasswordError', 'New password must be at least 8 characters long');
+						return;
+					}
+
+					if (newPassword !== confirmPassword) {
+						showError('confirmPasswordError', 'New passwords do not match');
+						return;
+					}
+
+					if (currentPassword === newPassword) {
+						showError('newPasswordError', 'New password must be different from current password');
+						return;
+					}
+
+					changePasswordBtn.disabled = true;
+					changePasswordBtn.innerHTML = '<span class="loading loading-spinner"></span> Changing password...';
+
+					try {
+						const response = await fetch('/api/settings/change-password', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+							},
+							body: JSON.stringify({
+								currentPassword,
+								newPassword,
+							}),
+						});
+
+						const data = await response.json();
+
+						if (response.ok) {
+							showMessage('Password changed successfully!', 'success');
+							changePasswordForm.reset();
+							// Clear message after 3 seconds
+							setTimeout(() => {
+								clearErrors();
+							}, 3000);
+						} else {
+							if (data.error) {
+								if (data.error.toLowerCase().includes('current password') || data.error.toLowerCase().includes('incorrect')) {
+									showError('currentPasswordError', data.error);
+								} else if (data.error.toLowerCase().includes('new password')) {
+									showError('newPasswordError', data.error);
+								} else {
+									showMessage(data.error, 'error');
+								}
+							} else {
+								showMessage('An error occurred. Please try again.', 'error');
+							}
+						}
+					} catch (error) {
+						showMessage('Network error. Please check your connection and try again.', 'error');
+					} finally {
+						changePasswordBtn.disabled = false;
+						changePasswordBtn.textContent = 'Change Password';
+					}
+				});
+			}
+		</script>
+	</body>
+</html>

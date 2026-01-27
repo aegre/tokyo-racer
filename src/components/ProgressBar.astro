@@ -1,0 +1,90 @@
+---
+interface Props {
+	percent: number;
+	id?: string;
+	label?: string;
+	showLabel?: boolean;
+}
+
+const { percent, id = 'progressBar', label, showLabel = false } = Astro.props;
+const safePercent = Math.max(0, Math.min(100, percent));
+---
+
+<div class="progress-bar-container">
+	{showLabel && label && (
+		<div class="progress-bar-label">
+			<span>{label}</span>
+			<span class="progress-bar-percent">{safePercent}%</span>
+		</div>
+	)}
+	<div class="progress-bar" id={id ? `${id}-track` : undefined}>
+		<div 
+			class="progress-bar-fill" 
+			id={id}
+			style={`width: ${safePercent}%;`}
+		></div>
+	</div>
+</div>
+
+<style>
+	.progress-bar-container {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		width: 100%;
+	}
+
+	.progress-bar-label {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: var(--text-sm);
+		color: var(--text-2);
+	}
+
+	.progress-bar-percent {
+		font-weight: var(--weight-semibold);
+		color: var(--text-1);
+	}
+
+	.progress-bar {
+		height: 10px;
+		background: var(--surface-3);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+		position: relative;
+		width: 100%;
+		border: 1px solid var(--border-strong);
+		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+	}
+
+	.progress-bar-fill {
+		height: 100%;
+		background: linear-gradient(90deg, var(--accent), var(--accent-2));
+		border-radius: var(--radius-sm);
+		transition: width 0.3s ease-out, opacity 0.2s ease-out;
+		min-width: 4px;
+		display: block;
+		opacity: 1;
+		box-shadow: 
+			0 0 12px rgba(96, 165, 250, 0.5),
+			0 0 6px rgba(52, 211, 153, 0.3),
+			inset 0 1px 0 rgba(255, 255, 255, 0.3);
+		position: relative;
+	}
+
+	.progress-bar-fill::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: linear-gradient(90deg, 
+			rgba(255, 255, 255, 0.2) 0%, 
+			rgba(255, 255, 255, 0) 50%,
+			rgba(255, 255, 255, 0.2) 100%);
+		border-radius: var(--radius-sm);
+		pointer-events: none;
+	}
+</style>

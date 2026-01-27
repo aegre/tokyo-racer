@@ -1,0 +1,97 @@
+---
+import '../styles/global.css';
+const pageTitle = 'Verify Email';
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="cupcake">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>{pageTitle}</title>
+	</head>
+	<body class="min-h-screen bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-4">
+		<div class="card w-full max-w-md bg-base-100 shadow-2xl">
+			<div class="card-body text-center">
+				<h1 class="card-title text-3xl mb-6 justify-center">Email Verification</h1>
+				<div id="status">
+					<div class="flex flex-col items-center">
+						<span class="loading loading-spinner loading-lg text-primary mb-4"></span>
+						<p class="text-base-content/70">Verifying your email...</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			async function verifyEmail() {
+				const urlParams = new URLSearchParams(window.location.search);
+				const token = urlParams.get('token');
+				const statusDiv = document.getElementById('status') as HTMLDivElement;
+
+				if (!token) {
+					statusDiv.innerHTML = `
+						<div class="alert alert-error">
+							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+							<span>No verification token provided.</span>
+						</div>
+						<div class="mt-4">
+							<a href="/signup" class="btn btn-primary">Sign Up</a>
+						</div>
+					`;
+					return;
+				}
+
+				try {
+					const response = await fetch(`/api/verify-email?token=${token}`, {
+						method: 'GET',
+					});
+
+					const data = await response.json();
+
+					if (response.ok) {
+						statusDiv.innerHTML = `
+							<div class="alert alert-success">
+								<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<span>${data.message}</span>
+							</div>
+							<div class="mt-4">
+								<a href="/login" class="btn btn-primary">Log In</a>
+							</div>
+						`;
+					} else {
+						statusDiv.innerHTML = `
+							<div class="alert alert-error">
+								<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<span>${data.error || 'Verification failed. The token may be invalid or expired.'}</span>
+							</div>
+							<div class="mt-4">
+								<a href="/signup" class="btn btn-primary">Sign Up Again</a>
+							</div>
+						`;
+					}
+				} catch (error) {
+					statusDiv.innerHTML = `
+						<div class="alert alert-error">
+							<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+							<span>Network error. Please check your connection and try again.</span>
+						</div>
+						<div class="mt-4">
+							<a href="/login" class="btn btn-primary">Go to Login</a>
+						</div>
+					`;
+				}
+			}
+
+			verifyEmail();
+		</script>
+	</body>
+</html>

@@ -1,0 +1,181 @@
+---
+import '../styles/global.css';
+const pageTitle = 'Log In';
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="cupcake">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>{pageTitle}</title>
+	</head>
+	<body class="min-h-screen bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-4">
+		<div class="card w-full max-w-md bg-base-100 shadow-2xl">
+			<div class="card-body">
+				<h1 class="card-title text-3xl mb-2">Welcome Back</h1>
+				<p class="text-base-content/70 mb-6">Log in to your account</p>
+
+				<form id="loginForm">
+					<div class="form-control mb-4">
+						<label class="label" for="email">
+							<span class="label-text font-semibold">Email</span>
+						</label>
+						<input
+							type="email"
+							id="email"
+							name="email"
+							required
+							autocomplete="email"
+							class="input input-bordered w-full"
+							placeholder="your@email.com"
+						/>
+						<label class="label" for="email">
+							<span class="label-text-alt text-error hidden" id="emailError"></span>
+						</label>
+					</div>
+
+					<div class="form-control mb-4">
+						<label class="label" for="password">
+							<span class="label-text font-semibold">Password</span>
+						</label>
+						<input
+							type="password"
+							id="password"
+							name="password"
+							required
+							autocomplete="current-password"
+							class="input input-bordered w-full"
+							placeholder="••••••••"
+						/>
+						<label class="label" for="password">
+							<span class="label-text-alt text-error hidden" id="passwordError"></span>
+						</label>
+					</div>
+
+					<div class="form-control mb-4">
+						<label class="label cursor-pointer justify-start gap-2">
+							<input type="checkbox" id="rememberMe" name="rememberMe" class="checkbox checkbox-primary checkbox-sm" />
+							<span class="label-text">Keep me signed in</span>
+						</label>
+					</div>
+
+					<div class="alert alert-success hidden mb-4" id="successMessage">
+						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<span id="successText"></span>
+					</div>
+
+					<div class="alert alert-error hidden mb-4" id="generalError">
+						<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<span id="generalErrorText"></span>
+					</div>
+
+					<button type="submit" id="submitBtn" class="btn btn-primary w-full mt-2">
+						Log In
+					</button>
+				</form>
+
+				<div class="divider">OR</div>
+
+				<div class="text-center">
+					<p class="text-sm text-base-content/70">
+						Don't have an account?{' '}
+						<a href="/signup" class="link link-primary font-semibold">Sign up</a>
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			const form = document.getElementById('loginForm') as HTMLFormElement;
+			const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
+			const emailError = document.getElementById('emailError') as HTMLSpanElement;
+			const passwordError = document.getElementById('passwordError') as HTMLSpanElement;
+			const generalError = document.getElementById('generalError') as HTMLDivElement;
+			const generalErrorText = document.getElementById('generalErrorText') as HTMLSpanElement;
+			const successMessage = document.getElementById('successMessage') as HTMLDivElement;
+			const successText = document.getElementById('successText') as HTMLSpanElement;
+
+			function clearErrors() {
+				emailError.classList.add('hidden');
+				emailError.textContent = '';
+				passwordError.classList.add('hidden');
+				passwordError.textContent = '';
+				generalError.classList.add('hidden');
+				generalErrorText.textContent = '';
+				successMessage.classList.add('hidden');
+				successText.textContent = '';
+			}
+
+			function showError(element: HTMLSpanElement, message: string) {
+				element.textContent = message;
+				element.classList.remove('hidden');
+			}
+
+			function showGeneralError(message: string) {
+				generalErrorText.textContent = message;
+				generalError.classList.remove('hidden');
+			}
+
+			function showSuccess(message: string) {
+				successText.textContent = message;
+				successMessage.classList.remove('hidden');
+			}
+
+			form.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				clearErrors();
+
+				const formData = {
+					email: (document.getElementById('email') as HTMLInputElement).value,
+					password: (document.getElementById('password') as HTMLInputElement).value,
+					rememberMe: (document.getElementById('rememberMe') as HTMLInputElement).checked,
+				};
+
+				submitBtn.disabled = true;
+				submitBtn.innerHTML = '<span class="loading loading-spinner"></span> Logging in...';
+
+				try {
+					const response = await fetch('/api/login', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify(formData),
+					});
+
+					const data = await response.json();
+
+					if (response.ok) {
+						showSuccess(data.message);
+						// Redirect to home page after successful login
+						setTimeout(() => {
+							window.location.href = '/';
+						}, 1000);
+					} else {
+						if (data.error) {
+							if (data.error.toLowerCase().includes('email') || data.error.toLowerCase().includes('password')) {
+								showGeneralError(data.error);
+							} else if (data.error.toLowerCase().includes('verify')) {
+								showGeneralError(data.error);
+							} else {
+								showGeneralError(data.error);
+							}
+						} else {
+							showGeneralError('An error occurred. Please try again.');
+						}
+					}
+				} catch (error) {
+					showGeneralError('Network error. Please check your connection and try again.');
+				} finally {
+					submitBtn.disabled = false;
+					submitBtn.textContent = 'Log In';
+				}
+			});
+		</script>
+	</body>
+</html>
