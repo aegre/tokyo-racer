@@ -1,0 +1,11 @@
+name = "tokyo-tracker"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database configuration removed - using Supabase instead
+# Add Supabase environment variables via Cloudflare Pages environment variables
+# or use .env file for local development
+
+[vars]
+# Add any environment variables here
+# Supabase credentials should be set via Cloudflare Pages dashboard or .env file

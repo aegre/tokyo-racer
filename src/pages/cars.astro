@@ -1,0 +1,680 @@
+---
+import "../styles/global.css";
+import { getUserFromSession } from "../lib/session";
+
+// Check if user is authenticated
+let user = null;
+let isAuthenticated = false;
+
+try {
+  const sessionToken = Astro.cookies.get("session")?.value;
+  if (sessionToken) {
+    user = await getUserFromSession(sessionToken);
+    isAuthenticated = !!user;
+  }
+} catch (error) {
+  console.error("Authentication check error:", error);
+  isAuthenticated = false;
+}
+
+// Redirect to login if not authenticated
+if (!isAuthenticated) {
+  return Astro.redirect("/login", 302);
+}
+---
+
+<!doctype html>
+<html lang="en" data-theme="professional">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Tokyo Tracker - Mandatory Cars</title>
+  </head>
+  <body
+    class="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200"
+  >
+    <header class="topbar">
+      <div class="topbar-overlay" id="topbarOverlay"></div>
+      <div class="topbar-content">
+        <div class="topbar-brand">
+          <a href="/" class="topbar-logo">Tokyo Tracker</a>
+        </div>
+        <button
+          class="topbar-menu-toggle"
+          id="mobileMenuToggle"
+          aria-label="Toggle menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            class="topbar-icon"
+            id="menuIcon"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"></path>
+          </svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            class="topbar-icon"
+            id="closeIcon"
+            style="display: none;"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+        <nav class="topbar-nav" id="topbarNav">
+          <a href="/" class="topbar-nav-link">Wanderers</a>
+          <a href="/tips" class="topbar-nav-link">General Tips</a>
+          <a href="/cars" class="topbar-nav-link topbar-nav-link--active"
+            >Mandatory Cars</a
+          >
+        </nav>
+        <div class="topbar-actions">
+          <div class="topbar-user">
+            <button
+              class="topbar-avatar"
+              id="userMenuBtn"
+              aria-label="User menu"
+            >
+              <span class="topbar-avatar-text"
+                >{user?.username?.charAt(0).toUpperCase() || "U"}</span
+              >
+            </button>
+            <div class="topbar-dropdown" id="userMenu" style="display: none;">
+              <a href="/profile" class="topbar-dropdown-item">
+                Profile
+              </a>
+              <a href="/settings" class="topbar-dropdown-item">Settings</a>
+              <a
+                href="/api/logout"
+                class="topbar-dropdown-item topbar-dropdown-item--danger"
+                >Logout</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <div class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Mandatory Cars</h1>
+            <p class="page-subtitle">
+              Cars required to defeat every wanderer in the game
+            </p>
+          </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="cars-summary" id="carsSummary">
+          <div class="cars-summary-stats">
+            <div class="cars-stat">
+              <span class="cars-stat-icon">✓</span>
+              <span class="cars-stat-value" id="ownedCount">0</span>
+              <span class="cars-stat-label">Owned</span>
+            </div>
+            <div class="cars-stat">
+              <span class="cars-stat-icon">🔓</span>
+              <span class="cars-stat-value" id="unlockedCount">0</span>
+              <span class="cars-stat-label">Unlocked</span>
+            </div>
+            <div class="cars-stat">
+              <span class="cars-stat-icon">🔒</span>
+              <span class="cars-stat-value" id="lockedCount">0</span>
+              <span class="cars-stat-label">Locked</span>
+            </div>
+          </div>
+          <div class="cars-progress-container">
+            <div class="cars-progress-label">
+              <span>Progress</span>
+              <span class="cars-progress-percent" id="progressPercent">0%</span>
+            </div>
+            <div class="cars-progress-bar">
+              <div
+                class="cars-progress-fill"
+                id="progressFill"
+                style="width: 0%;"
+              >
+              </div>
+            </div>
+          </div>
+          <button
+            class="cars-info-toggle"
+            id="infoToggle"
+            aria-expanded="false"
+          >
+            <span>Show rules</span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+              class="cars-info-icon"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M19.5 8.25l-7.5 7.5-7.5-7.5"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Collapsible Info Box -->
+        <div class="cars-info" id="carsInfo" style="display: none;">
+          <div class="cars-info-content">
+            <p
+              style="font-size: var(--text-sm); color: var(--text-2); line-height: var(--leading-normal);"
+            >
+              To defeat every wanderer in the game, you will need every car on
+              this list. There is one wanderer that will only race each specific
+              model. Fortunately though, for any wanderers that need a specific
+              engine type/drivetrain/aspiration/etc. this list will also cover
+              all of them too, so no need to worry about getting any extra cars
+              beyond this.
+            </p>
+            <p
+              style="font-size: var(--text-xs); color: var(--text-3); margin-top: var(--space-2);"
+            >
+              <strong>Note:</strong> For each wanderer that only races a specific
+              model, you CANNOT use a customized boss/wanderer variant of the same
+              car. For wanderers that only race stock cars, you can't use customized
+              boss/wanderer cars for them either.
+            </p>
+          </div>
+        </div>
+
+        <!-- Filters and Sort -->
+        <div class="cars-controls">
+          <div class="cars-filters">
+            <button class="cars-filter-btn" data-filter="all" id="filterAll"
+              >All</button
+            >
+            <button class="cars-filter-btn" data-filter="owned" id="filterOwned"
+              >Owned</button
+            >
+            <button
+              class="cars-filter-btn"
+              data-filter="unlocked"
+              id="filterUnlocked">Unlocked</button
+            >
+            <button
+              class="cars-filter-btn"
+              data-filter="locked"
+              id="filterLocked">Locked</button
+            >
+          </div>
+          <div class="cars-sort">
+            <label
+              for="sortSelect"
+              style="font-size: var(--text-xs); color: var(--text-3); margin-right: var(--space-2);"
+              >Sort:</label
+            >
+            <select id="sortSelect" class="control" style="min-width: 140px;">
+              <option value="name">Alphabetical</option>
+              <option value="brand">Brand</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Cars Table -->
+        <div class="section">
+          <div class="table-wrap cars-table-wrap">
+            <table class="table cars-table" id="carsTable">
+              <thead class="cars-table-header">
+                <tr>
+                  <th>Car</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="carsTableBody">
+                <tr>
+                  <td
+                    colspan="2"
+                    class="text-center"
+                    style="padding: var(--space-8);"
+                  >
+                    <span
+                      class="loading loading-spinner loading-lg text-primary"
+                    ></span>
+                    <p
+                      style="margin-top: var(--space-4); color: var(--text-3);"
+                    >
+                      Loading cars...
+                    </p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // Mobile menu toggle
+      const mobileMenuToggle = document.getElementById("mobileMenuToggle");
+      const topbarNav = document.getElementById("topbarNav");
+      const topbarOverlay = document.getElementById("topbarOverlay");
+      const menuIcon = document.getElementById("menuIcon");
+      const closeIcon = document.getElementById("closeIcon");
+
+      if (mobileMenuToggle && topbarNav && topbarOverlay) {
+        mobileMenuToggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isOpen = topbarNav.classList.contains("mobile-open");
+
+          if (isOpen) {
+            topbarNav.classList.remove("mobile-open");
+            topbarOverlay.classList.remove("mobile-open");
+            if (menuIcon) menuIcon.style.display = "block";
+            if (closeIcon) closeIcon.style.display = "none";
+          } else {
+            topbarNav.classList.add("mobile-open");
+            topbarOverlay.classList.add("mobile-open");
+            if (menuIcon) menuIcon.style.display = "none";
+            if (closeIcon) closeIcon.style.display = "block";
+          }
+        });
+
+        // Close menu when clicking overlay
+        topbarOverlay.addEventListener("click", () => {
+          topbarNav.classList.remove("mobile-open");
+          topbarOverlay.classList.remove("mobile-open");
+          if (menuIcon) menuIcon.style.display = "block";
+          if (closeIcon) closeIcon.style.display = "none";
+        });
+
+        // Close menu when clicking a nav link
+        topbarNav.querySelectorAll(".topbar-nav-link").forEach((link) => {
+          link.addEventListener("click", () => {
+            topbarNav.classList.remove("mobile-open");
+            topbarOverlay.classList.remove("mobile-open");
+            if (menuIcon) menuIcon.style.display = "block";
+            if (closeIcon) closeIcon.style.display = "none";
+          });
+        });
+      }
+
+      interface Car {
+        id: number;
+        name: string;
+        brand: string;
+        model: string;
+        year: string | null;
+        chassis: string | null;
+        status: "locked" | "unlocked" | "owned";
+      }
+
+      let allCars: Car[] = [];
+      let filteredCars: Car[] = [];
+      let currentFilter: string = "all";
+      let currentSort: string = "name";
+
+      // Load cars
+      async function loadCars() {
+        try {
+          const response = await fetch("/api/cars");
+          const data = (await response.json()) as { cars?: Car[] };
+          if (data.cars) {
+            allCars = data.cars;
+            applyFiltersAndSort();
+            updateStats();
+          }
+        } catch (error) {
+          console.error("Error loading cars:", error);
+          const tbody = document.getElementById("carsTableBody");
+          if (tbody) {
+            tbody.innerHTML = `
+							<tr>
+								<td colspan="2" class="text-center" style="padding: var(--space-8);">
+									<div style="display: flex; flex-direction: column; align-items: center; gap: var(--space-2);">
+										<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 3rem; height: 3rem; color: var(--danger);">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+										</svg>
+										<p style="color: var(--danger); font-weight: var(--weight-medium);">Error loading cars. Please refresh the page.</p>
+									</div>
+								</td>
+							</tr>
+						`;
+          }
+        }
+      }
+
+      // Apply filters and sort
+      function applyFiltersAndSort() {
+        // Filter
+        if (currentFilter === "all") {
+          filteredCars = [...allCars];
+        } else {
+          filteredCars = allCars.filter((car) => car.status === currentFilter);
+        }
+
+        // Sort
+        filteredCars.sort((a, b) => {
+          if (currentSort === "name") {
+            return a.name.localeCompare(b.name);
+          } else if (currentSort === "brand") {
+            // Sort by brand first, then model
+            const brandCompare = a.brand.localeCompare(b.brand);
+            if (brandCompare !== 0) return brandCompare;
+            return a.model.localeCompare(b.model);
+          } else if (currentSort === "status") {
+            const statusOrder = { owned: 0, unlocked: 1, locked: 2 };
+            return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
+          }
+          return 0;
+        });
+
+        updateTable();
+      }
+
+      // Update stats
+      function updateStats() {
+        const owned = allCars.filter((c) => c.status === "owned").length;
+        const unlocked = allCars.filter((c) => c.status === "unlocked").length;
+        const locked = allCars.filter((c) => c.status === "locked").length;
+        const total = allCars.length;
+        const progress = total > 0 ? Math.round((owned / total) * 100) : 0;
+
+        const ownedEl = document.getElementById("ownedCount");
+        const unlockedEl = document.getElementById("unlockedCount");
+        const lockedEl = document.getElementById("lockedCount");
+        const progressPercentEl = document.getElementById("progressPercent");
+        const progressFillEl = document.getElementById("progressFill");
+
+        if (ownedEl) ownedEl.textContent = owned.toString();
+        if (unlockedEl) unlockedEl.textContent = unlocked.toString();
+        if (lockedEl) lockedEl.textContent = locked.toString();
+        if (progressPercentEl) progressPercentEl.textContent = `${progress}%`;
+        if (progressFillEl) {
+          // Ensure width is set and visible
+          const width = Math.max(progress, 0);
+          progressFillEl.style.width = `${width}%`;
+          progressFillEl.style.opacity = width > 0 ? "1" : "0.3";
+        }
+      }
+
+      // Get status pill HTML (clickable)
+      function getStatusPill(car: Car): string {
+        const statusMap: Record<
+          string,
+          { class: string; text: string; icon: string }
+        > = {
+          locked: {
+            class: "cars-status-pill cars-status-pill--locked",
+            text: "Locked",
+            icon: "⚫",
+          },
+          unlocked: {
+            class: "cars-status-pill cars-status-pill--unlocked",
+            text: "Unlocked",
+            icon: "🔵",
+          },
+          owned: {
+            class: "cars-status-pill cars-status-pill--owned",
+            text: "Owned",
+            icon: "🟢",
+          },
+        };
+        const statusInfo = statusMap[car.status] || statusMap.locked;
+        return `<button class="${statusInfo.class}" data-car-id="${car.id}" data-status="${car.status}" type="button">
+					<span class="cars-status-icon">${statusInfo.icon}</span>
+					<span class="cars-status-text">${statusInfo.text}</span>
+				</button>`;
+      }
+
+      // Format car name for display
+      function formatCarName(car: Car): string {
+        const brand = car.brand || "";
+        const model = car.model || car.name;
+        const year = car.year ? `${car.year}` : "";
+        const chassis = car.chassis ? ` · ${car.chassis}` : "";
+
+        if (!brand) {
+          return `<div class="cars-name-primary">${car.name}</div>`;
+        }
+
+        return `
+					<div class="cars-name-brand">${brand}</div>
+					<div class="cars-name-primary">${model}</div>
+					${year || chassis ? `<div class="cars-name-meta">${year}${chassis}</div>` : ""}
+				`;
+      }
+
+      // Update table
+      function updateTable() {
+        const tbody = document.getElementById("carsTableBody");
+        if (!tbody) return;
+
+        if (filteredCars.length === 0) {
+          tbody.innerHTML = `
+						<tr>
+							<td colspan="2" class="text-center" style="padding: var(--space-8);">
+								<p style="color: var(--text-3);">No cars found.</p>
+							</td>
+						</tr>
+					`;
+          return;
+        }
+
+        tbody.innerHTML = filteredCars
+          .map((car, index) => {
+            const statusPill = getStatusPill(car);
+            const carName = formatCarName(car);
+            const rowClass =
+              car.status === "owned"
+                ? "cars-row--owned"
+                : car.status === "unlocked"
+                  ? "cars-row--unlocked"
+                  : "cars-row--locked";
+            return `
+						<tr class="cars-row ${rowClass}" style="animation-delay: ${index * 0.03}s">
+							<td class="cars-cell-name">${carName}</td>
+							<td class="cars-cell-status">${statusPill}</td>
+						</tr>
+					`;
+          })
+          .join("");
+
+        // Add event listeners to status pills
+        document
+          .querySelectorAll<HTMLButtonElement>(".cars-status-pill")
+          .forEach((pill) => {
+            pill.addEventListener("click", handleStatusClick);
+          });
+      }
+
+      // Handle status pill click (cycle through states)
+      async function handleStatusClick(event: Event) {
+        const button = event.currentTarget as HTMLButtonElement;
+        if (!button) return;
+
+        const carId = parseInt(button.dataset.carId || "0", 10);
+        const currentStatus = button.dataset.status as
+          | "locked"
+          | "unlocked"
+          | "owned";
+
+        // Cycle: locked -> unlocked -> owned -> locked
+        const nextStatus: Record<string, "locked" | "unlocked" | "owned"> = {
+          locked: "unlocked",
+          unlocked: "owned",
+          owned: "locked",
+        };
+        const newStatus = nextStatus[currentStatus] || "locked";
+
+        const car = allCars.find((c) => c.id === carId);
+        if (!car) return;
+
+        const previousStatus = car.status;
+
+        // Optimistic update
+        car.status = newStatus;
+        button.dataset.status = newStatus;
+        button.classList.remove(`cars-status-pill--${previousStatus}`);
+        button.classList.add(`cars-status-pill--${newStatus}`);
+
+        // Update icon and text
+        const statusMap: Record<string, { icon: string; text: string }> = {
+          locked: { icon: "⚫", text: "Locked" },
+          unlocked: { icon: "🔵", text: "Unlocked" },
+          owned: { icon: "🟢", text: "Owned" },
+        };
+        const statusInfo = statusMap[newStatus];
+        const iconEl = button.querySelector(".cars-status-icon");
+        const textEl = button.querySelector(".cars-status-text");
+        if (iconEl) iconEl.textContent = statusInfo.icon;
+        if (textEl) textEl.textContent = statusInfo.text;
+
+        // Update row class
+        const row = button.closest("tr");
+        if (row) {
+          row.classList.remove(`cars-row--${previousStatus}`);
+          row.classList.add(`cars-row--${newStatus}`);
+        }
+
+        button.disabled = true;
+
+        try {
+          const response = await fetch("/api/cars", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ carId, status: newStatus }),
+          });
+
+          if (!response.ok) {
+            // Revert on error
+            if (car) {
+              car.status = previousStatus;
+              button.dataset.status = previousStatus;
+              button.classList.remove(`cars-status-pill--${newStatus}`);
+              button.classList.add(`cars-status-pill--${previousStatus}`);
+              const prevStatusInfo = statusMap[previousStatus];
+              if (iconEl) iconEl.textContent = prevStatusInfo.icon;
+              if (textEl) textEl.textContent = prevStatusInfo.text;
+              if (row) {
+                row.classList.remove(`cars-row--${newStatus}`);
+                row.classList.add(`cars-row--${previousStatus}`);
+              }
+            }
+            alert("Failed to update car status. Please try again.");
+          } else {
+            updateStats();
+            applyFiltersAndSort();
+          }
+        } catch (error) {
+          // Revert on error
+          if (car) {
+            car.status = previousStatus;
+            button.dataset.status = previousStatus;
+            button.classList.remove(`cars-status-pill--${newStatus}`);
+            button.classList.add(`cars-status-pill--${previousStatus}`);
+            const prevStatusInfo = statusMap[previousStatus];
+            if (iconEl) iconEl.textContent = prevStatusInfo.icon;
+            if (textEl) textEl.textContent = prevStatusInfo.text;
+            if (row) {
+              row.classList.remove(`cars-row--${newStatus}`);
+              row.classList.add(`cars-row--${previousStatus}`);
+            }
+          }
+          alert("Error updating car status. Please try again.");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      // Info toggle
+      const infoToggle = document.getElementById("infoToggle");
+      const carsInfo = document.getElementById("carsInfo");
+      if (infoToggle && carsInfo) {
+        infoToggle.addEventListener("click", () => {
+          const isExpanded =
+            infoToggle.getAttribute("aria-expanded") === "true";
+          infoToggle.setAttribute("aria-expanded", (!isExpanded).toString());
+          carsInfo.style.display = isExpanded ? "none" : "block";
+          const span = infoToggle.querySelector("span");
+          if (span) span.textContent = isExpanded ? "Show rules" : "Hide rules";
+        });
+      }
+
+      // Filter buttons
+      document.querySelectorAll(".cars-filter-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const button = e.currentTarget as HTMLButtonElement;
+          const filter = button.dataset.filter || "all";
+          currentFilter = filter;
+
+          // Update active state
+          document.querySelectorAll(".cars-filter-btn").forEach((b) => {
+            b.classList.remove("cars-filter-btn--active");
+          });
+          button.classList.add("cars-filter-btn--active");
+
+          applyFiltersAndSort();
+        });
+      });
+
+      // Sort select
+      const sortSelect = document.getElementById(
+        "sortSelect",
+      ) as HTMLSelectElement;
+      if (sortSelect) {
+        sortSelect.addEventListener("change", (e) => {
+          const select = e.target as HTMLSelectElement;
+          currentSort = select.value;
+          applyFiltersAndSort();
+        });
+      }
+
+      // User menu toggle
+      const userMenuBtn = document.getElementById("userMenuBtn");
+      const userMenu = document.getElementById("userMenu");
+      if (userMenuBtn && userMenu) {
+        userMenuBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isVisible = userMenu.style.display !== "none";
+          userMenu.style.display = isVisible ? "none" : "block";
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener("click", (e) => {
+          if (
+            userMenu &&
+            !userMenu.contains(e.target as Node) &&
+            !userMenuBtn?.contains(e.target as Node)
+          ) {
+            userMenu.style.display = "none";
+          }
+        });
+      }
+
+      // Set initial filter active
+      document
+        .getElementById("filterAll")
+        ?.classList.add("cars-filter-btn--active");
+
+      // Initial load
+      loadCars();
+    </script>
+  </body>
+</html>

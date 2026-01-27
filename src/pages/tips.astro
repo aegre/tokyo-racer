@@ -1,0 +1,257 @@
+---
+import '../styles/global.css';
+import { getUserFromSession } from '../lib/session';
+
+// Check if user is authenticated
+let user = null;
+let isAuthenticated = false;
+
+try {
+	const sessionToken = Astro.cookies.get('session')?.value;
+	if (sessionToken) {
+		user = await getUserFromSession(sessionToken);
+		isAuthenticated = !!user;
+	}
+} catch (error) {
+	console.error('Authentication check error:', error);
+	isAuthenticated = false;
+}
+
+// Redirect to login if not authenticated
+if (!isAuthenticated) {
+	return Astro.redirect('/login', 302);
+}
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="professional">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Tokyo Tracker - General Tips</title>
+	</head>
+	<body class="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200">
+		<header class="topbar">
+			<div class="topbar-overlay" id="topbarOverlay"></div>
+			<div class="topbar-content">
+				<div class="topbar-brand">
+					<a href="/" class="topbar-logo">Tokyo Tracker</a>
+				</div>
+				<button class="topbar-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="topbar-icon" id="menuIcon">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+					</svg>
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="topbar-icon" id="closeIcon" style="display: none;">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+				</button>
+				<nav class="topbar-nav" id="topbarNav">
+					<a href="/" class="topbar-nav-link">Wanderers</a>
+					<a href="/tips" class="topbar-nav-link topbar-nav-link--active">General Tips</a>
+					<a href="/cars" class="topbar-nav-link">Mandatory Cars</a>
+				</nav>
+				<div class="topbar-actions">
+					<div class="topbar-user">
+						<button class="topbar-avatar" id="userMenuBtn" aria-label="User menu">
+							<span class="topbar-avatar-text">{user?.username?.charAt(0).toUpperCase() || 'U'}</span>
+						</button>
+						<div class="topbar-dropdown" id="userMenu" style="display: none;">
+							<a href="/profile" class="topbar-dropdown-item">
+								Profile
+							</a>
+							<a href="/settings" class="topbar-dropdown-item">Settings</a>
+							<a href="/api/logout" class="topbar-dropdown-item topbar-dropdown-item--danger">Logout</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<main class="dashboard">
+			<div class="container">
+				<!-- Page Header -->
+				<div class="page-header">
+					<div>
+						<h1 class="page-title">General Tips</h1>
+						<p class="page-subtitle">Tips and strategies for Tokyo Xtreme Racer - Wanderers</p>
+					</div>
+				</div>
+
+				<!-- Tips Content -->
+				<div class="section">
+					<div style="padding: var(--space-6);">
+						<div class="tips-content">
+							<div class="tip-item">
+								<h3 class="tip-title">Yellow Speech Bubbles at PAs</h3>
+								<p class="tip-text">
+									When starting a new session via <strong>ENTER COURSE</strong>, look at which PAs have yellow speech bubbles on them. What that means is NPCs at these PAs have conversations that are either about the game's plot, or they've got hints about how to race wanderers. The wanderer's requirement will be noted in the <strong>REFERENCE</strong> menu once you've done this. So it's a good idea to go around to all the PAs and talk to all the yellow speech bubble NPCs until they quit spawning.
+								</p>
+								<p class="tip-text">
+									This is easy to do once you've got the <strong>'Valet Service'</strong> perk, which lets you fast travel between PAs. You can find that perk in the Perk tab on the far right, in the far right tree that starts with the "Tune Cost Lv.1" perk.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">RIVAL Tab for Quick Reference</h3>
+								<p class="tip-text">
+									Also on the <strong>ENTER COURSE</strong> menu, make good use of the <strong>RIVAL</strong> tab to quickly find which wanderers are on the course, and where they are. If there's a <strong>P</strong> next to their name, that means they're in a PA.
+								</p>
+								<p class="tip-text">
+									You can also open this menu while on the course. The Menu button on the Xbox controller is the default button for opening this screen.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">Checking Your Stats</h3>
+								<p class="tip-text">
+									A lot of wanderers require you to hit a certain stat to challenge them. You can easily look up each applicable stat by going back to the garage, going to the <strong>GARAGE</strong> tab, and then looking under <strong>JOURNAL</strong>. Your total wins, highest win combo, defeated rivals, defeated teams, total mileage, and total CP stats are here. The <strong>COLLECTION</strong> list will also cover how many cars you own.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">Wanderer Spawning</h3>
+								<p class="tip-text">
+									For many wanderers, they won't appear instantly once you've satisfied their requirement. Most of the time you will need to go back to the garage and then back out onto the highway again before they spawn.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">Consecutive Wins</h3>
+								<p class="tip-text">
+									For wanderers that require consecutive wins, it's acceptable to get them by racing regular traffic cars or the same racer over and over again. Feel free to cheese those wins however you want. Get <strong>35+ consecutive wins</strong> and you'll have enough to challenge every wanderer with this requirement type.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">Mileage Requirements</h3>
+								<p class="tip-text">
+									For wanderers that require mileage, you will need a lifetime mileage of <strong>3000km+ (1865mi+)</strong> to challenge every wanderer with this kind of requirement. To grind mileage fast, first disable the Additional Rules on the <strong>GARAGE</strong> tab in the garage, since otherwise oil and water temperature will force you to constantly slow down. Next, go into the course, starting at the <strong>Daikoku PA</strong> in the southwest corner of the map, drive all the way up the Wangan to the <strong>Hakozaki PA</strong> on the north end of the map, then turn around and head back south to Daikoku PA to do it again.
+								</p>
+								<p class="tip-text">
+									Alternatively for mileage, you can set your car to auto-pilot and cruise AFK, but this will take a long time since your car travels at about 59-60 km/h when in auto-pilot.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">Cosmetic Item Requirements</h3>
+								<p class="tip-text">
+									Many wanderers only require you to equip a certain cosmetic item to race them. So if you keep your main car equipped with these items at all times, you can race all of these wanderers when they show up:
+								</p>
+								<ul class="tip-list">
+									<li><strong>Neon</strong> (COMEDIC DISRUPTOR)</li>
+									<li><strong>Aero parts</strong> (UNBALANCED ISHII, CRAFTSMAN MANABE)</li>
+									<li><strong>Custom color</strong> (SNOW DANCER)</li>
+									<li><strong>Leopard print vinyl</strong> (STRONGEST MAAMIN)</li>
+									<li><strong>20+ vinyls</strong> (SOMETHING FUN)</li>
+									<li><strong>&lt;DESIRE&gt; sticker</strong> (CHIC SPRINT)</li>
+									<li><strong>&lt;INFINITY&gt; sticker</strong> (MR. N-TSUKA)</li>
+									<li><strong>Aura</strong> (TORTOISESHELL MASK)</li>
+								</ul>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">License Plate Changes</h3>
+								<p class="tip-text">
+									For wanderers where you need to change your car's license plate, go into <strong>COLLECTION</strong> on the garage, pick the car you want to drive, then hit <strong>LICENSE PLATE</strong> to change it. If you can't read Japanese, definitely take a screenshot of the Kanji from the reference list, as the Kanji is untranslated in the license plate menu. I have included screenshots of each location name in the guide, however.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">DARK NIGHT'S BETELGEUSE</h3>
+								<p class="tip-text">
+									When you encounter <strong>DARK NIGHT'S BETELGEUSE</strong> for the first time, I <strong>HIGHLY advise</strong> defeating them not once, but <strong>five times</strong>. There's a specific wanderer that requires you to do this, but DARK NIGHT'S BETELGEUSE rarely spawns on the course after their initial defeat.
+								</p>
+							</div>
+
+							<div class="tip-item">
+								<h3 class="tip-title">Other Car Advice</h3>
+								<p class="tip-text">
+									While some of the mandatory cars for Wanderers aren't worth using otherwise, <strong>DON'T sell them</strong> when you're done using them. If you decide to do <strong>NEW GAME +</strong> later, you'll be glad you kept them when you need to race those same wanderers again.
+								</p>
+								<p class="tip-text">
+									For your first playthrough, I highly recommend getting the <strong>NISSAN GT-R Premium edition (R35) '17</strong> as soon as possible once it unlocks in Stage 5. Until you unlock engine swaps, it's arguably the best regular car in the game with its high base stats, and it's engine power can be tuned up to 1,185 PS. It's also very useful for defeating certain wanderers, like ones that only race stock vehicles or won't let you equip nitrous.
+								</p>
+								<p class="tip-text">
+									As to why to get the <strong>R35 '17</strong> specifically instead of the '14 or '24: The '14 has slightly less power, and the '24's tuning settings can't be adjusted.
+								</p>
+								<p class="tip-text">
+									The <strong>Lexus LFA</strong> is also another great endgame pick when it unlocks in Stage 5, although it has the disadvantage of not being able to equip many visual mods (custom colors, vinyls, stickers, aero) meaning there's quite a few wanderers you can't race with it. However it is the strongest NA (naturally aspirated) car in the game, which makes it useful for racing <strong>GOD EAR</strong>.
+								</p>
+								<p class="tip-text">
+									For wanderers that won't let you use nitrous, an endgame <strong>Customized Car</strong> is also very useful for them, like <strong>Unrivaled Emperor's R34 GTR</strong>. Doesn't have nitrous, but frankly doesn't need it either.
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</main>
+
+		<script>
+			// Mobile menu toggle
+			const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+			const topbarNav = document.getElementById('topbarNav');
+			const topbarOverlay = document.getElementById('topbarOverlay');
+			const menuIcon = document.getElementById('menuIcon');
+			const closeIcon = document.getElementById('closeIcon');
+			
+			if (mobileMenuToggle && topbarNav && topbarOverlay) {
+				mobileMenuToggle.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const isOpen = topbarNav.classList.contains('mobile-open');
+					
+					if (isOpen) {
+						topbarNav.classList.remove('mobile-open');
+						topbarOverlay.classList.remove('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'block';
+						if (closeIcon) closeIcon.style.display = 'none';
+					} else {
+						topbarNav.classList.add('mobile-open');
+						topbarOverlay.classList.add('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'none';
+						if (closeIcon) closeIcon.style.display = 'block';
+					}
+				});
+				
+				// Close menu when clicking overlay
+				topbarOverlay.addEventListener('click', () => {
+					topbarNav.classList.remove('mobile-open');
+					topbarOverlay.classList.remove('mobile-open');
+					if (menuIcon) menuIcon.style.display = 'block';
+					if (closeIcon) closeIcon.style.display = 'none';
+				});
+				
+				// Close menu when clicking a nav link
+				topbarNav.querySelectorAll('.topbar-nav-link').forEach((link) => {
+					link.addEventListener('click', () => {
+						topbarNav.classList.remove('mobile-open');
+						topbarOverlay.classList.remove('mobile-open');
+						if (menuIcon) menuIcon.style.display = 'block';
+						if (closeIcon) closeIcon.style.display = 'none';
+					});
+				});
+			}
+
+			// User menu toggle
+			const userMenuBtn = document.getElementById('userMenuBtn');
+			const userMenu = document.getElementById('userMenu');
+			if (userMenuBtn && userMenu) {
+				userMenuBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					const isVisible = userMenu.style.display !== 'none';
+					userMenu.style.display = isVisible ? 'none' : 'block';
+				});
+
+				// Close menu when clicking outside
+				document.addEventListener('click', (e) => {
+					if (userMenu && !userMenu.contains(e.target as Node) && !userMenuBtn?.contains(e.target as Node)) {
+						userMenu.style.display = 'none';
+					}
+				});
+			}
+		</script>
+	</body>
+</html>
